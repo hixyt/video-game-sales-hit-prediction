@@ -14,7 +14,7 @@ A Gradio web app takes NA Sales as input and shows both predictions.
 ## Dataset
 Video Game Sales (vgsales.csv), 16,598 games, 11 columns
 
-Kaggle: https://www.kaggle.com/datasets/gregorysmith/video-game-sales
+Kaggle: https://www.kaggle.com/datasets/dandanjia/vgsales-csv
 
 ## Files
 | File | What it is |
