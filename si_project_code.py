@@ -842,14 +842,16 @@ scaler_c = joblib.load("scaler_classifier.pkl")
 
 def predict_game(na_sales):
     x = pd.DataFrame({"NA_Sales": [na_sales]})
-    sales = model.predict(scaler.transform(x))[0]
-    hit = clf.predict(scaler_c.transform(x))[0]
-    result = "Predicted Global Sales: " + str(round(sales, 2)) + " million copies\n"
-    result = result + "Prediction: " + ("HIT game" if hit == 1 else "NOT a hit")
-    return result
+    sales = round(float(model.predict(scaler.transform(x))[0]), 2)  # regression model
+    prob = clf.predict_proba(scaler_c.transform(x))[0]  # classification model
+    hit = {"HIT game": float(prob[1]), "Not a hit": float(prob[0])}
+    beaten = round((df["Global_Sales"] < sales).mean() * 100, 1)  # compare with dataset
+    summary = (f"A game that sells {na_sales} million copies in North America is expected to sell "
+               f"about {sales} million copies worldwide. That is more than {beaten}% of all games in the dataset.")
+    return sales, hit, summary
 
-print(predict_game(1.0))     #test: a game that sold 1 million copies in North America
-print(predict_game(0.2))
+print(predict_game(1.5))     #test: a game that sold 1.5 million copies in North America
+print(predict_game(0.3))
 
 
 # ---------- PR7 - GUI: Gradio app (public link)
@@ -858,9 +860,13 @@ import gradio as gr
 
 interface = gr.Interface(
     fn=predict_game,
-    inputs=[gr.Number(label="Enter NA Sales (millions):")],
-    outputs=gr.Textbox(label="Prediction"),
-    title="Video Game Sales and Hit Predictor",
-    description="Enter how many million copies a game sold in North America. The app predicts its worldwide sales and whether it will be a hit (1 million+ copies)."
+    inputs=gr.Slider(0, 10, value=1, step=0.1, label="NA Sales (millions)"),
+    outputs=[gr.Number(label="Predicted Global Sales (millions)"),
+             gr.Label(label="Hit or Not Hit"),
+             gr.Textbox(label="Summary")],
+    title="🎮 Video Game Sales and Hit Predictor",
+    description="Move the slider to the North America sales of a game. The app predicts its worldwide sales and the chance that it becomes a hit (1 million+ copies).",
+    examples=[[0.2], [0.5], [1.5], [5.0]],
+    flagging_mode="never"
 )
-interface.launch(share=True)
+interface.launch(share=True, theme=gr.themes.Soft())
