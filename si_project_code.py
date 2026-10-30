@@ -5,8 +5,6 @@
 # How to run: keep vgsales.csv in the same folder, then run:  python si_project_code.py
 # ==========================================================
 
-# Install libraries first:  pip install -r requirements.txt
-
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -58,8 +56,6 @@ print("Average sales of these top games (millions):", scraped["Sales"].mean())
 # ---------- LOAD DATASET (Kaggle: Video Game Sales, vgsales.csv)
 
 df = pd.read_csv("vgsales.csv")
-# If upload does not work, use this line instead:
-# df = pd.read_csv("https://raw.githubusercontent.com/EmanueleFons/Game-Sales-Analysis/main/vgsales.csv")
 print(df.shape)
 print(df.head())
 
@@ -122,9 +118,6 @@ print("Skewness =", g.skew())
 # ---------- Genre-wise average sales
 
 print(df.groupby("Genre")["Global_Sales"].mean().sort_values(ascending=False))
-
-
-# ---------- Interpretation
 
 
 # ---------- Histogram of Global Sales
@@ -191,39 +184,26 @@ print("Year with most games:", per_year["count"].idxmax())
 print("Year with highest sales:", per_year["sum"].idxmax())
 
 
-# ---------- Interpretation
-
-
 # ---------- Sampling and Distributions
-
-
-# ---------- Sampling methods
-
-np.random.seed(1)
-
-# Simple random sampling
-sample1 = df.sample(n=200, random_state=1)
-
-# With replacement
-sample2 = df.sample(n=200, replace=True, random_state=1)
-
-# Fraction sampling (10%)
-sample3 = df.sample(frac=0.10, random_state=1)
-
-# Systematic sampling (every 50th row)
-sample4 = df.iloc[::50]
-
-# Stratified sampling (20 games from each Genre)
-sample5 = df.groupby("Genre").sample(n=20, random_state=1)
-
-# Cluster sampling (2 random Platforms)
-clusters = np.random.choice(df["Platform"].unique(), 2)
-print("Selected clusters:", clusters)
-sample6 = df[df["Platform"].isin(clusters)]
 
 
 # ---------- Compare population and samples
 
+# 1. Simple Random Sampling
+sample1 = df.sample(n=100, random_state=42)
+
+# 2. Systematic Sampling
+k = len(df) // 100
+sample4 = df.iloc[::k]
+
+# 3. Stratified Sampling
+sample5 = df.groupby("Genre", group_keys=False).apply(lambda x: x.sample(frac=0.01, random_state=42))
+
+# 4. Cluster Sampling
+random_years = pd.Series(df["Year"].unique()).sample(n=3, random_state=42)
+sample6 = df[df["Year"].isin(random_years)]
+
+# Create the comparison table
 comparison = pd.DataFrame({
     "Statistics": ["Size", "Mean", "Median", "Std Dev"],
     "Population": [len(df), df["Global_Sales"].mean(), df["Global_Sales"].median(), df["Global_Sales"].std()],
@@ -348,12 +328,6 @@ plt.ylabel("Cumulative Probability")
 plt.show()
 
 print("P(game released in or before 2005) =", cdf[2005])
-
-
-# ---------- Interpretation
-
-
-# ---------- CLT and Point Estimation
 
 
 # ---------- Population
@@ -484,9 +458,6 @@ print("Population Mean:", df["Global_Sales"].mean(), "| Average Sample Mean:", n
 print("Population Median:", df["Global_Sales"].median(), "| Average Sample Median:", np.mean(medians))
 print("Variance of Mean Estimator:", np.var(means, ddof=1))
 print("Variance of Median Estimator:", np.var(medians, ddof=1))
-
-
-# ---------- Interpretation
 
 
 # ---------- Confidence Interval
@@ -842,31 +813,16 @@ scaler_c = joblib.load("scaler_classifier.pkl")
 
 def predict_game(na_sales):
     x = pd.DataFrame({"NA_Sales": [na_sales]})
-    sales = round(float(model.predict(scaler.transform(x))[0]), 2)  # regression model
-    prob = clf.predict_proba(scaler_c.transform(x))[0]  # classification model
-    hit = {"HIT game": float(prob[1]), "Not a hit": float(prob[0])}
-    beaten = round((df["Global_Sales"] < sales).mean() * 100, 1)  # compare with dataset
-    summary = (f"A game that sells {na_sales} million copies in North America is expected to sell "
-               f"about {sales} million copies worldwide. That is more than {beaten}% of all games in the dataset.")
-    return sales, hit, summary
+    sales = model.predict(scaler.transform(x))[0]
+    hit = clf.predict(scaler_c.transform(x))[0]
+    result = "Predicted Global Sales: " + str(round(sales, 2)) + " million copies\n"
+    result = result + "Prediction: " + ("HIT game" if hit == 1 else "NOT a hit")
+    return result
 
-print(predict_game(1.5))     #test: a game that sold 1.5 million copies in North America
-print(predict_game(0.3))
+print(predict_game(1.0))     #test: a game that sold 1 million copies in North America
+print(predict_game(0.2))
 
 
-# ---------- PR7 - GUI: Gradio app (public link)
+# ---------- PR7 - GUI: Streamlit app
 
-import gradio as gr
-
-interface = gr.Interface(
-    fn=predict_game,
-    inputs=gr.Slider(0, 10, value=1, step=0.1, label="NA Sales (millions)"),
-    outputs=[gr.Number(label="Predicted Global Sales (millions)"),
-             gr.Label(label="Hit or Not Hit"),
-             gr.Textbox(label="Summary")],
-    title="🎮 Video Game Sales and Hit Predictor",
-    description="Move the slider to the North America sales of a game. The app predicts its worldwide sales and the chance that it becomes a hit (1 million+ copies).",
-    examples=[[0.2], [0.5], [1.5], [5.0]],
-    flagging_mode="never"
-)
-interface.launch(share=True, theme=gr.themes.Soft())
+# The Streamlit GUI code is in app.py. To open the app, run:  streamlit run app.py
